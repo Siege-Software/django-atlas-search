@@ -1,58 +1,54 @@
 # django typesense
 
-[![Build](https://github.com/Siege-Software/django-typesense/workflows/build/badge.svg?branch=main)](https://github.com/Siege-Software/django-typesense/actions?workflow=CI)
-[![codecov](https://codecov.io/gh/Siege-Software/django-typesense/branch/main/graph/badge.svg?token=S4W0E84821)](https://codecov.io/gh/Siege-Software/django-typesense)
+[![Build](https://github.com/Siege-Software/django-atlas-search/workflows/build/badge.svg?branch=main)](https://github.com/Siege-Software/django-atlas-search/actions?workflow=CI)
+[![codecov](https://codecov.io/gh/Siege-Software/django-atlas-search/branch/main/graph/badge.svg?token=S4W0E84821)](https://codecov.io/gh/Siege-Software/django-atlas-search)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-![PyPI download month](https://img.shields.io/pypi/dm/django-typesense.svg)
-[![PyPI version](https://badge.fury.io/py/django-typesense.svg)](https://pypi.python.org/pypi/django-typesense/)
+![PyPI download month](https://img.shields.io/pypi/dm/django-atlas-search.svg)
+[![PyPI version](https://badge.fury.io/py/django-typesense.svg)](https://pypi.python.org/pypi/django-atlas-search/)
 ![Python versions](https://img.shields.io/badge/python-%3E%3D3.8-brightgreen)
 ![Django Versions](https://img.shields.io/badge/django-%3E%3D3.2-brightgreen)
-[![PyPI License](https://img.shields.io/pypi/l/django-typesense.svg)](https://pypi.org/project/django-typesense/)
+[![PyPI License](https://img.shields.io/pypi/l/django-atlas-search.svg)](https://pypi.org/project/django-atlas-search/)
 
 
 ## What is it?
-Faster Django Admin powered by [Typesense](https://typesense.org/)
+Faster Django Admin & Search powered by [Atlas Search](https://www.mongodb.com/products/platform/atlas-search)
 
 ## Quick Start Guide
 
 ### Installation
 
 ```sh
-pip install django-typesense
+pip install django-atlas-search
 ```
 
 or install directly from github to test the most recent version
 
 ```sh
-pip install git+https://github.com/Siege-Software/django-typesense.git
+pip install git+https://github.com/Siege-Software/django-atlas-search.git
 ```
 
 ### Configuration
 
 Update your settings to include the following
 
-- Add `django_typesense` to the list of installed apps.
+- Add `django_atlas_search` to the list of installed apps.
 
 ```py
 ...
 INSTALLED_APPS = [
     ...
-    "django_typesense"
+    "django_atlas_search"
 ]
 ```
 
-- Add `TYPESENSE` connection details
+- Add `ATLAS_SEARCH_CONNECTION_STRING` connection details. Read more about [Connection Strings](https://www.mongodb.com/docs/manual/reference/connection-string/)
 
 ```py
 ...
-TYPESENSE = {
-    "api_key": "xyz",
-    "nodes": [{"host": "0.0.0.0", "port": "8108", "protocol": "http"}],
-    "connection_timeout_seconds": 2
-}
+ATLAS_SEARCH_CONNECTION_STRING="mongodb://127.0.0.1:32768/?directConnection=true"
 ```
 
-Follow this [guide](https://typesense.org/docs/guide/install-typesense.html#option-1-typesense-cloud) to install and run typesense
+Follow this [guide](https://www.mongodb.com/docs/atlas/getting-started/) to setup atlas search
 
 ### Create Collections
 Throughout this guide, we’ll refer to the following models, which comprise a song catalogue application:
