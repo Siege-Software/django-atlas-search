@@ -2,7 +2,7 @@ from django.db import transaction
 from django.db.models.signals import m2m_changed, post_save, pre_delete
 from django.dispatch import receiver
 
-from django_typesense.mixins import TypesenseModelMixin
+from django_atlas_search.mixins import TypesenseModelMixin
 
 
 @receiver(post_save)

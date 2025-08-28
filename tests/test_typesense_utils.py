@@ -5,8 +5,8 @@ from django.db.utils import OperationalError
 from django.test import TestCase
 from typesense.exceptions import TypesenseClientError
 
-from django_typesense.exceptions import BatchUpdateError, UnorderedQuerySetError
-from django_typesense.utils import (
+from django_atlas_search.exceptions import BatchUpdateError, UnorderedQuerySetError
+from django_atlas_search.utils import (
     bulk_delete_typesense_records,
     bulk_update_typesense_records,
     get_unix_timestamp,

@@ -49,9 +49,9 @@ jobs:
           pip install coverage
           pip install factory-boy
           pip install pytz
-          pip install typesense
+          pip install pymongo
 
-      - name: Setup TypeSense
+      - name: Setup Atlas Search
         uses: jirevwe/typesense-github-action@v1.0.1
         with:
           typesense-version: '27.0'

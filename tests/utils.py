@@ -1,6 +1,6 @@
 from typesense import exceptions
 
-from django_typesense.typesense_client import client
+from django_atlas_search.typesense_client import client
 
 
 def get_document(schema_name, document_id):

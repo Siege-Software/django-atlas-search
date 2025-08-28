@@ -1,14 +1,14 @@
 from setuptools import find_namespace_packages, setup
-from django_typesense import __version__
+from django_atlas_search import __version__
 
 setup(
-    name="django_typesense",
+    name="django_atlas_search",
     author="Siege Software",
     author_email="info@siege.ai",
     version=__version__,
     install_requires=[
         "django",
-        "typesense",
+        "pymongo",
     ],
     setup_requires=["wheel"],
     packages=find_namespace_packages(),

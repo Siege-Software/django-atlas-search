@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from django_typesense.mixins import TypesenseManager
+from django_atlas_search.mixins import TypesenseManager
 
 from tests.factories import ArtistFactory, GenreFactory, SongFactory
 from tests.models import Song

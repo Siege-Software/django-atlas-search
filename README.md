@@ -41,11 +41,11 @@ INSTALLED_APPS = [
 ]
 ```
 
-- Add `ATLAS_SEARCH_CONNECTION_STRING` connection details. Read more about [Connection Strings](https://www.mongodb.com/docs/manual/reference/connection-string/)
+- Add `ATLAS_CONNECTION_STRING` connection details. Read more about [Connection Strings](https://www.mongodb.com/docs/manual/reference/connection-string/)
 
 ```py
 ...
-ATLAS_SEARCH_CONNECTION_STRING="mongodb://127.0.0.1:32768/?directConnection=true"
+ATLAS_CONNECTION_STRING="mongodb://127.0.0.1:32768/?directConnection=true"
 ```
 
 Follow this [guide](https://www.mongodb.com/docs/atlas/getting-started/) to setup atlas search
@@ -165,7 +165,7 @@ def genre_name(self, obj):
 Using Typesense for search
 
 ```py
-from django_typesense.utils import typesense_search
+from django_atlas_search.utils import typesense_search
 
 from .models import Song
 

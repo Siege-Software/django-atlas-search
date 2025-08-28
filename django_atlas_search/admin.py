@@ -6,9 +6,9 @@ from django.db.models import QuerySet
 from django.forms import forms
 from django.http import JsonResponse
 
-from django_typesense.mixins import TypesenseModelMixin
-from django_typesense.utils import typesense_search, export_documents
-from django_typesense.paginator import TypesenseSearchPaginator
+from django_atlas_search.mixins import TypesenseModelMixin
+from django_atlas_search.utils import typesense_search, export_documents
+from django_atlas_search.paginator import TypesenseSearchPaginator
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +82,7 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
         """
         Return the ChangeList class for use on the changelist page.
         """
-        from django_typesense.changelist import TypesenseChangeList
+        from django_atlas_search.changelist import TypesenseChangeList
 
         return TypesenseChangeList
 

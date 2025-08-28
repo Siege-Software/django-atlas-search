@@ -1,5 +1,5 @@
-from django_typesense import fields
-from django_typesense.collections import TypesenseCollection
+from django_atlas_search import fields
+from django_atlas_search.collections import TypesenseCollection
 
 
 class SongCollection(TypesenseCollection):

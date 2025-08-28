@@ -5,7 +5,7 @@ from django.apps import apps
 
 
 class Command(BaseCommand):
-    help = "Create and/or Update Typesense Collections"
+    help = "Create and/or Update Atlas Collections"
 
     def add_arguments(self, parser):
         parser.add_argument(

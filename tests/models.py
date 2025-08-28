@@ -1,7 +1,7 @@
 from django.db import models
 from django.utils import dateformat
 
-from django_typesense.mixins import TypesenseManager, TypesenseModelMixin
+from django_atlas_search.mixins import TypesenseManager, TypesenseModelMixin
 from tests.collections import SongCollection
 
 

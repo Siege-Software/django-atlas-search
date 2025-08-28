@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from django.test import TestCase
 
-from django_typesense import fields
+from django_atlas_search import fields
 from tests.collections import SongCollection
 from tests.models import Artist, Genre, Song
 

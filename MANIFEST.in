@@ -1,1 +1,1 @@
-recursive-include django_typesense/static *
+recursive-include django_atlas_search/static *

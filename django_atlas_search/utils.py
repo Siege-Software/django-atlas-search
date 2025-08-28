@@ -10,7 +10,7 @@ from django.core.paginator import Paginator
 from django.db.models import QuerySet
 from typesense.exceptions import TypesenseClientError
 
-from django_typesense.exceptions import BatchUpdateError, UnorderedQuerySetError
+from django_atlas_search.exceptions import BatchUpdateError, UnorderedQuerySetError
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +83,7 @@ def bulk_update_typesense_records(
         throws a `FieldError` or `TypeError`.
     """
 
-    from django_typesense.mixins import TypesenseQuerySet
+    from django_atlas_search.mixins import TypesenseQuerySet
 
     if not isinstance(records_queryset, TypesenseQuerySet):
         logger.error(
@@ -134,7 +134,7 @@ def bulk_delete_typesense_records(document_ids: list, collection_name: str) -> N
     None
     """
 
-    from django_typesense.typesense_client import client
+    from django_atlas_search.typesense_client import client
 
     try:
         client.collections[collection_name].documents.delete(
@@ -158,7 +158,7 @@ def typesense_search(collection_name, **kwargs):
         A list of the typesense results
     """
 
-    from django_typesense.typesense_client import client
+    from django_atlas_search.typesense_client import client
 
     if not collection_name:
         return
@@ -215,7 +215,7 @@ def export_documents(
     include_fields: List[str] = None,
     exclude_fields: List[str] = None,
 ) -> List[dict]:
-    from django_typesense.typesense_client import client
+    from django_atlas_search.typesense_client import client
 
     params = {}
     if filter_by is not None:

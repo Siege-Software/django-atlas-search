@@ -15,8 +15,8 @@ from django.db.models import OrderBy, OuterRef, Exists
 from django.utils.translation import gettext
 from django.utils.dateparse import parse_datetime
 
-from django_typesense.fields import TYPESENSE_DATETIME_FIELDS
-from django_typesense.utils import get_unix_timestamp
+from django_atlas_search.fields import TYPESENSE_DATETIME_FIELDS
+from django_atlas_search.utils import get_unix_timestamp
 
 # Changelist settings
 ALL_VAR = "all"
