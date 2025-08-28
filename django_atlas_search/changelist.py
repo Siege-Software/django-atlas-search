@@ -15,7 +15,7 @@ from django.db.models import OrderBy, OuterRef, Exists
 from django.utils.translation import gettext
 from django.utils.dateparse import parse_datetime
 
-from django_atlas_search.fields import TYPESENSE_DATETIME_FIELDS
+from django_atlas_search.fields import ATLAS_SEARCH_DATETIME_FIELDS
 from django_atlas_search.utils import get_unix_timestamp
 
 # Changelist settings
@@ -47,7 +47,7 @@ class ChangeListSearchForm(forms.Form):
         }
 
 
-class TypesenseChangeList(ChangeList):
+class AtlasSearchChangeList(ChangeList):
     search_form_class = ChangeListSearchForm
 
     def __init__(
@@ -82,12 +82,10 @@ class TypesenseChangeList(ChangeList):
         self.has_active_filters = None
         self.clear_all_filters_qs = None
         self.date_hierarchy = date_hierarchy
-        self.search_fields = model_admin.get_typesense_search_fields(request)
+        self.search_fields = model_admin.get_atlas_search_fields(request)
         self.list_select_related = list_select_related
-        self.list_per_page = min(list_per_page, 250)  # Typesense Max hits per page
-        self.list_max_show_all = min(
-            list_max_show_all, 250
-        )  # Typesense Max hits per page
+        self.list_per_page = list_per_page
+        self.list_max_show_all = list_max_show_all
         self.model_admin = model_admin
         self.preserved_filters = model_admin.get_preserved_filters(request)
         self.sortable_by = sortable_by
@@ -122,8 +120,8 @@ class TypesenseChangeList(ChangeList):
         else:
             self.list_editable = list_editable
 
-        # TYPESENSE
-        self.results = self.get_typesense_results(request)
+        # ATLAS
+        self.results = self.get_atlas_results(request)
         self.get_results(request)
 
         if self.is_popup:
@@ -175,7 +173,7 @@ class TypesenseChangeList(ChangeList):
         self.multi_page = multi_page
         self.paginator = paginator
 
-    def get_typesense_ordering(self, request):
+    def get_atlas_ordering(self, request):
         """
         Return the list of ordering fields for the change list.
         First check the get_ordering() method in model admin, then check
@@ -221,7 +219,7 @@ class TypesenseChangeList(ChangeList):
 
     def get_sort_by(self, ordering):
         sort_dict = {}
-        fields = self.model.collection_class.get_fields()
+        fields = self.model.search_index_class.get_fields()
 
         for param in ordering:
             if param.startswith("-"):
@@ -263,7 +261,7 @@ class TypesenseChangeList(ChangeList):
         max_val, min_val, lookup, value = None, None, None, None
 
         try:
-            field = self.model.collection_class.get_field(field_name)
+            field = self.model.search_index_class.get_field(field_name)
         except KeyError as er:
             logger.debug(
                 f"Searching `{field_name}` with parameters `{used_parameters}` produced error: {er}"
@@ -332,7 +330,7 @@ class TypesenseChangeList(ChangeList):
 
         return search_filters_dict
 
-    def get_typesense_results(self, request):
+    def get_atlas_results(self, request):
         """
         This should do what Changelist.get_queryset does
 
@@ -340,7 +338,7 @@ class TypesenseChangeList(ChangeList):
             request:
 
         Returns:
-            Typesense Search Results in dictionary
+            Atlas Search Results in dictionary
         """
 
         # First, we collect all the declared list filters.
@@ -387,7 +385,7 @@ class TypesenseChangeList(ChangeList):
         )
 
         # Set ordering.
-        ordering = self.get_typesense_ordering(request)
+        ordering = self.get_atlas_ordering(request)
         sort_by = self.get_sort_by(ordering)
 
         # Apply django_typesense search results
@@ -448,7 +446,7 @@ class TypesenseChangeList(ChangeList):
                 # ValueError, ValidationError, or ?.
 
                 # for django-typesense, possibly means k only available in typesense
-                new_lookup_params = self.model.collection_class.get_django_lookup(param, value, e)
+                new_lookup_params = self.model.search_index_class.get_django_lookup(param, value, e)
                 qs = qs.filter(**new_lookup_params)
 
         # Apply search results

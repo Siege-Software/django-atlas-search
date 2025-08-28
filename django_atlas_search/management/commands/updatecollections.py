@@ -20,7 +20,7 @@ class Command(BaseCommand):
         for model_data in apps.all_models.values():
             for model in model_data.values():
                 if hasattr(model, 'collection_class'):
-                    collections[model.collection_class.schema_name] = model.collection_class
+                    collections[model.search_index_class.schema_name] = model.search_index_class
 
         collections_for_action = []
         # Make sure the collection name(s) they asked for exists

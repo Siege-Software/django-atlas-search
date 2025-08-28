@@ -12,7 +12,7 @@ class TestTypeSenseSignals(TestCase):
         self.song = SongFactory(genre=self.genre)
 
     def test_post_save_typesense_models(self):
-        schema_name = self.song.collection_class.schema_name
+        schema_name = self.song.search_index_class.schema_name
         song_document = get_document(schema_name, self.song.pk)
 
         self.assertIsNotNone(song_document)
@@ -28,7 +28,7 @@ class TestTypeSenseSignals(TestCase):
         )
 
     def test_pre_delete_typesense_models(self):
-        schema_name = self.song.collection_class.schema_name
+        schema_name = self.song.search_index_class.schema_name
         song_pk = self.song.pk
 
         song_document = get_document(schema_name, song_pk)
@@ -40,7 +40,7 @@ class TestTypeSenseSignals(TestCase):
         self.assertIsNone(song_document)
 
     def test_m2m_changed_typesense_models(self):
-        schema_name = self.song.collection_class.schema_name
+        schema_name = self.song.search_index_class.schema_name
 
         song_document = get_document(schema_name, self.song.pk)
         self.assertIsNotNone(song_document)

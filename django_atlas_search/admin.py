@@ -6,28 +6,28 @@ from django.db.models import QuerySet
 from django.forms import forms
 from django.http import JsonResponse
 
-from django_atlas_search.mixins import TypesenseModelMixin
+from django_atlas_search.mixins import AtlasSearchModelMixin
 from django_atlas_search.utils import typesense_search, export_documents
-from django_atlas_search.paginator import TypesenseSearchPaginator
+from django_atlas_search.paginator import AtlasSearchPaginator
 
 logger = logging.getLogger(__name__)
 
 
-class TypesenseSearchAdminMixin(admin.ModelAdmin):
-    typesense_search_fields = []
+class AtlasSearchAdminMixin(admin.ModelAdmin):
+    atlas_search_fields = []
 
     def get_typesense_search_fields(self, request):
         """
         Return a sequence containing the fields to be searched whenever
         somebody submits a search query.
         """
-        return self.typesense_search_fields
+        return self.atlas_search_fields
 
     @property
     def media(self):
         super_media = super().media
         return forms.Media(
-            js=super_media._js + ["admin/js/search-typesense.js"],
+            js=super_media._js + ["admin/js/search-atlas.js"],
             css=super_media._css,
         )
 
@@ -58,7 +58,7 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
 
         sortable_fields = super().get_sortable_by(request)
         return set(sortable_fields).intersection(
-            self.model.collection_class.sortable_fields
+            self.model.search_index_class.sortable_fields
         )
 
     def get_results(self, request):
@@ -73,18 +73,18 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
         """
 
         return typesense_search(
-            collection_name=self.model.collection_class.schema_name,
+            collection_name=self.model.search_index_class.schema_name,
             q="*",
-            query_by=self.model.collection_class.query_by_fields,
+            query_by=self.model.search_index_class.query_by_fields,
         )
 
     def get_changelist(self, request, **kwargs):
         """
         Return the ChangeList class for use on the changelist page.
         """
-        from django_atlas_search.changelist import TypesenseChangeList
+        from django_atlas_search.changelist import AtlasSearchChangeList
 
-        return TypesenseChangeList
+        return AtlasSearchChangeList
 
     def get_paginator(
         self, request, results, per_page, orphans=0, allow_empty_first_page=True
@@ -95,11 +95,11 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
                 request, results, per_page, orphans, allow_empty_first_page
             )
 
-        return TypesenseSearchPaginator(
+        return AtlasSearchPaginator(
             results, per_page, orphans, allow_empty_first_page, self.model
         )
 
-    def get_typesense_search_results(
+    def get_atlas_search_results(
             self,
             request,
             search_term: str,
@@ -126,9 +126,9 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
             list_per_page = self.list_per_page
 
         results = typesense_search(
-            collection_name=self.model.collection_class.schema_name,
+            collection_name=self.model.search_index_class.schema_name,
             q=search_term or "*",
-            query_by=self.model.collection_class.query_by_fields,
+            query_by=self.model.search_index_class.query_by_fields,
             page=page_num,
             per_page=list_per_page,
             filter_by=filter_by,
@@ -139,7 +139,7 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
     def get_search_results(self, request, queryset, search_term):
         if not request.POST.get("action"):
             may_have_duplicates = False
-            results = self.get_typesense_search_results(request, search_term)
+            results = self.get_atlas_search_results(request, search_term)
             ids = [result["document"]["id"] for result in results["hits"]]
             queryset = queryset.filter(id__in=ids)
         else:

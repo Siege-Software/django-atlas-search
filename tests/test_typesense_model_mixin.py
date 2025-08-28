@@ -21,7 +21,7 @@ class TestTypeSenseMixin(TestCase):
         self.assertIsInstance(Song.objects, TypesenseManager)
 
     def test_update_collection(self):
-        schema_name = self.song.collection_class.schema_name
+        schema_name = self.song.search_index_class.schema_name
         song_document = get_document(schema_name, self.song.pk)
         self.assertEqual(song_document["genre_name"], self.song.genre.name)
 
@@ -39,7 +39,7 @@ class TestTypeSenseMixin(TestCase):
         self.assertEqual(song_document["genre_name"], self.song.genre.name)
 
     def test_delete_collection(self):
-        schema_name = self.song.collection_class.schema_name
+        schema_name = self.song.search_index_class.schema_name
         song_document = get_document(schema_name, self.song.pk)
         self.assertEqual(song_document["title"], self.song.title)
 

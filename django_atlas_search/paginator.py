@@ -4,13 +4,13 @@ from django.core.paginator import Paginator
 from django.utils.functional import cached_property
 
 
-class TypesenseSearchPaginator(Paginator):
+class AtlasSearchPaginator(Paginator):
     def __init__(
         self, object_list, per_page, orphans=0, allow_empty_first_page=True, model=None
     ):
         super().__init__(object_list, per_page, orphans, allow_empty_first_page)
         self.model = model
-        self.collection_class = self.model.get_search_index_class()
+        self.search_index_class = self.model.get_search_index_class()
         self.results = self.prepare_results()
 
     def prepare_results(self):
@@ -18,15 +18,15 @@ class TypesenseSearchPaginator(Paginator):
         Do whatever is required to present the values correctly in the admin.
         """
         documents = (hit['document'] for hit in self.object_list["hits"])
-        collection = self.model.get_search_index(data=documents)
+        search_index = self.model.get_search_index(data=documents)
         model_field_names = set((local_field.name for local_field in self.model._meta.local_fields))
         results = []
 
-        for _data in collection.validated_data:
+        for _data in search_index.validated_data:
             data = copy.deepcopy(_data)
             properties = {}
 
-            for field_name in collection.fields.keys():
+            for field_name in search_index.fields.keys():
                 if field_name not in model_field_names:
                     try:
                         field_val = data.pop(field_name)

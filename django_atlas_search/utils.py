@@ -101,7 +101,7 @@ def bulk_update_typesense_records(
                 "Please provide an ordered objects."
             )
 
-    collection_class = records_queryset.model.collection_class
+    collection_class = records_queryset.model.search_index_class
     paginator = Paginator(records_queryset, batch_size)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
