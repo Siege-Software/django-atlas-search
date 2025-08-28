@@ -1,58 +1,58 @@
 from django.db import models
 
 
-class TypesenseQuerySet(models.QuerySet):
+class AtlasSearchQuerySet(models.QuerySet):
     def delete(self):
-        assert issubclass(self.model, TypesenseModelMixin), (
-            f"Model `{self.model}` must inherit `TypesenseMixin` to use the TypesenseQueryset Manager"
+        assert issubclass(self.model, AtlasSearchModelMixin), (
+            f"Model `{self.model}` must inherit `AtlasSearchMixin` to use the AtlasSearchQueryset Manager"
         )
-        collection = self.model.get_collection(self, many=True)
-        collection.delete()
+        search_index = self.model.get_search_index(self, many=True)
+        search_index.delete()
         return super().delete()
 
     def update(self, **kwargs):
-        assert issubclass(self.model, TypesenseModelMixin), (
-            f"Model `{self.model}` must inherit `TypesenseMixin` to use the TypesenseQueryset Manager"
+        assert issubclass(self.model, AtlasSearchModelMixin), (
+            f"Model `{self.model}` must inherit `AtlasSearchMixin` to use the AtlasSearchQueryset Manager"
         )
         obj_ids = list(self.values_list('id', flat=True))
         update_result = super().update(**kwargs)
         queryset = self.model.objects.filter(id__in=obj_ids)
-        collection = self.model.get_collection(queryset, many=True, update_fields=kwargs.keys())
-        collection.update()
+        search_index = self.model.get_search_index(queryset, many=True, update_fields=kwargs.keys())
+        search_index.update()
         return update_result
 
 
-class TypesenseManager(models.Manager):
+class AtlasSearchManager(models.Manager):
     def get_queryset(self):
-        return TypesenseQuerySet(self.model, using=self._db)
+        return AtlasSearchQuerySet(self.model, using=self._db)
 
 
-class TypesenseModelMixin(models.Model):
-    collection_class = None
-    objects = TypesenseQuerySet.as_manager()
+class AtlasSearchModelMixin(models.Model):
+    search_index_class = None
+    objects = AtlasSearchQuerySet.as_manager()
 
     class Meta:
         abstract = True
 
     @classmethod
-    def get_collection_class(cls):
+    def get_search_index_class(cls):
         """
-        Return the class to use for the typesense collection.
-        Defaults to using `self.collection_class`.
+        Return the class to use for the search index.
+        Defaults to using `self.search_index_class`.
         """
-        assert cls.collection_class is not None, (
-            "'%s' should either include a `collection_class` attribute, "
-            "or override the `get_collection_class()` method."
+        assert cls.search_index_class is not None, (
+            "'%s' should either include a `search_index_class` attribute, "
+            "or override the `get_search_index_class()` method."
             % cls.__name__
         )
 
-        return cls.collection_class
+        return cls.search_index_class
 
     @classmethod
-    def get_collection(cls, *args, **kwargs):
+    def get_search_index(cls, *args, **kwargs):
         """
-        Return the collection obj.
+        Return the search index obj.
         """
-        collection_class = cls.get_collection_class()
-        return collection_class(*args, **kwargs)
+        search_index_class = cls.get_search_index_class()
+        return search_index_class(*args, **kwargs)
 

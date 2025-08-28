@@ -1,12 +1,10 @@
 import json
 from decimal import Decimal
-from datetime import datetime, date, time
+from datetime import datetime, date
 from typing import Optional
 from operator import attrgetter
 
 from bson import ObjectId
-
-from django_atlas_search.utils import get_unix_timestamp
 
 
 class AtlasSearchField:

@@ -10,7 +10,7 @@ class TypesenseSearchPaginator(Paginator):
     ):
         super().__init__(object_list, per_page, orphans, allow_empty_first_page)
         self.model = model
-        self.collection_class = self.model.get_collection_class()
+        self.collection_class = self.model.get_search_index_class()
         self.results = self.prepare_results()
 
     def prepare_results(self):
@@ -18,7 +18,7 @@ class TypesenseSearchPaginator(Paginator):
         Do whatever is required to present the values correctly in the admin.
         """
         documents = (hit['document'] for hit in self.object_list["hits"])
-        collection = self.model.get_collection(data=documents)
+        collection = self.model.get_search_index(data=documents)
         model_field_names = set((local_field.name for local_field in self.model._meta.local_fields))
         results = []
 
