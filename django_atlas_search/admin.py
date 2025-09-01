@@ -7,7 +7,6 @@ from django.forms import forms
 from django.http import JsonResponse
 
 from django_atlas_search.mixins import AtlasSearchModelMixin
-from django_atlas_search.utils import typesense_search, export_documents
 from django_atlas_search.paginator import AtlasSearchPaginator
 
 logger = logging.getLogger(__name__)
@@ -72,18 +71,14 @@ class AtlasSearchAdminMixin(admin.ModelAdmin):
             A list of the typesense results
         """
 
-        return typesense_search(
-            collection_name=self.model.search_index_class.schema_name,
-            q="*",
-            query_by=self.model.search_index_class.query_by_fields,
-        )
+        search_index = self.model.search_index_class()
+        return search_index.collection.find()
 
     def get_changelist(self, request, **kwargs):
         """
         Return the ChangeList class for use on the changelist page.
         """
         from django_atlas_search.changelist import AtlasSearchChangeList
-
         return AtlasSearchChangeList
 
     def get_paginator(
@@ -143,12 +138,6 @@ class AtlasSearchAdminMixin(admin.ModelAdmin):
             ids = [result["document"]["id"] for result in results["hits"]]
             queryset = queryset.filter(id__in=ids)
         else:
-            # id_dict_list = export_documents(
-            #     self.model.collection_class.schema_name, include_fields=["id"]
-            # )
-            # queryset = queryset.filter(
-            #     id__in=[id_dict["id"] for id_dict in id_dict_list]
-            # )
             queryset, may_have_duplicates = super().get_search_results(
                 request, queryset, search_term
             )

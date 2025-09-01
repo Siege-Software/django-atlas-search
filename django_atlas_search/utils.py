@@ -146,31 +146,6 @@ def bulk_delete_typesense_records(document_ids: list, collection_name: str) -> N
         )
 
 
-def typesense_search(collection_name, **kwargs):
-    """
-    Perform a search on the specified collection using the parameters provided.
-
-    Args:
-        collection_name: the schema name of the collection to perform the search on
-        **kwargs: typesense search parameters
-
-    Returns:
-        A list of the typesense results
-    """
-
-    from django_atlas_search.typesense_client import client
-
-    if not collection_name:
-        return
-
-    search_parameters = {}
-
-    for key, value in kwargs.items():
-        search_parameters.update({key: value})
-
-    return client.collections[collection_name].documents.search(search_parameters)
-
-
 def get_unix_timestamp(datetime_object) -> int:
     """Get the unix timestamp from a datetime object with the time part set to midnight
 

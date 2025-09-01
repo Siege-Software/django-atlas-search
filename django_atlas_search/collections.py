@@ -11,6 +11,8 @@ from django.conf import settings
 from django.db.models import QuerySet
 from django.utils.functional import cached_property
 
+from django_atlas_search.fields import AtlasSearchField, AtlasSearchObjectIdField
+
 try:
     from django.utils.functional import classproperty
 except ImportError:
@@ -87,13 +89,33 @@ class AtlasSearchIndex:
     database_name: str = None
     collection_name: str = None
     index_name: str = None
+    synonyms: List[Synonym] = []
 
-    def __init__(self, database_name: str, collection_name: str, index_name: str):
+    def __init__(
+            self,
+            database_name: str,
+            collection_name: str,
+            index_name: str,
+            obj: Union[object, QuerySet, Iterable] = None,
+            many: bool = False,
+            data: list = None,
+            update_fields: list = None
+    ):
+        assert not all([obj, data]), "`obj` and `data` cannot be provided together"
+        if data and obj:
+            raise Exception("'data' and 'obj' are mutually exclusive")
+
+        self._data = data
+        self.many = many
+        self.obj = obj
+
+        self.update_fields = update_fields
         self.fields = self.get_fields()
-        self._synonyms = [synonym().data for synonym in self.synonyms]
+        self.index_name = index_name
+        self.database_name = database_name
+        self.collection_name = collection_name
         db = client[self.database_name]
         self.collection = db[self.collection_name]
-
 
     @cached_property
     def data(self):
@@ -241,14 +263,10 @@ class AtlasSearchIndex:
                 if field_mapping:
                     mappings["fields"][field.name] = field_mapping
 
-        # Add synonym mappings if defined
-        if self._synonyms:
+        if self.synonyms:
             synonym_list = []
-            for synonym_data in self._synonyms:
-                for name, config in synonym_data.items():
-                    synonym_entry = {"name": name}
-                    synonym_entry.update(config)
-                    synonym_list.append(synonym_entry)
+            for synonym in self.synonyms:
+                synonym_list.append(synonym.index_definition)
 
             if synonym_list:
                 mappings["synonyms"] = synonym_list
@@ -429,47 +447,3 @@ class AtlasSearchIndex:
         if operations:
             result = self.collection.bulk_write(operations)
             return result
-
-    def search(self, query: str, limit: int = 10, skip: int = 0, **kwargs) -> list:
-        """
-        Perform an Atlas Search query
-
-        Args:
-            query: The search query string
-            limit: Maximum number of results to return
-            skip: Number of results to skip
-            **kwargs: Additional search parameters
-
-        Returns:
-            List of matching documents
-        """
-        if not self.collection:
-            raise ValueError("MongoDB collection not initialized")
-
-        search_fields = self.default_search_fields or self.searchable_fields
-
-        search_pipeline = [
-            {
-                "$search": {
-                    "index": self.index_name,
-                    "text": {
-                        "query": query,
-                        "path": search_fields
-                    }
-                }
-            },
-            {"$skip": skip},
-            {"$limit": limit}
-        ]
-
-        # Add additional search operators if provided
-        if kwargs:
-            search_stage = search_pipeline[0]["$search"]
-            search_stage.update(kwargs)
-
-        try:
-            results = list(self.collection.aggregate(search_pipeline))
-            return results
-        except Exception as e:
-            logger.error(f"Search query failed: {e}")
-            raise
