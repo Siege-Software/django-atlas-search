@@ -307,7 +307,18 @@ class AtlasSearchObjectIdField(AtlasSearchField):
         if isinstance(_value, ObjectId):
             return _value
         elif isinstance(_value, str):
-            return ObjectId(_value)
+            try:
+                return ObjectId(_value)
+            except Exception:
+                # If conversion fails, return as string (for Django model IDs)
+                return _value
+        elif isinstance(_value, int):
+            # Django model IDs are typically integers, convert to string then ObjectId
+            try:
+                return ObjectId(str(_value))
+            except Exception:
+                # If conversion fails, return as string
+                return str(_value)
         return _value
 
     def to_python(self, value):

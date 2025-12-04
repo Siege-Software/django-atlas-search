@@ -72,7 +72,7 @@ class AtlasSearchChangeList(ChangeList):
         self.lookup_opts = self.opts
         self.root_queryset = model_admin.get_queryset(request)
 
-        # TYPESENSE
+        # ATLAS SEARCH
         self.root_results = model_admin.get_results(request)
 
         self.list_display = list_display
@@ -91,7 +91,7 @@ class AtlasSearchChangeList(ChangeList):
         self.sortable_by = sortable_by
         self.search_help_text = search_help_text
 
-        # Get django_typesense parameters from the query string.
+        # Get Atlas Search parameters from the query string.
         _search_form = self.search_form_class(request.GET)
         if not _search_form.is_valid():
             for error in _search_form.errors.values():
@@ -120,9 +120,27 @@ class AtlasSearchChangeList(ChangeList):
         else:
             self.list_editable = list_editable
 
+        # Set filter_params early - required by get_filters() which is called by get_atlas_results()
+        # Django's ChangeList initializes this before calling get_filters()
+        self.filter_params = dict(request.GET.lists())
+
+        # Facets support (Django 4.2+)
+        # These attributes are set by Django's ChangeList for facet filtering
+        self.add_facets = getattr(model_admin, 'add_facets', None)
+        self.is_facets_optional = getattr(model_admin, 'is_facets_optional', None)
+        
+        # Facet links (set by Django's ChangeList if facets are enabled)
+        self.add_facet_link = None
+        self.remove_facet_link = None
+
         # ATLAS
         self.results = self.get_atlas_results(request)
         self.get_results(request)
+        
+        # Set queryset attribute (required by Django's ChangeList)
+        # This is used by admin templates and other Django admin code
+        # Note: get_queryset() also calls get_filters(), which sets filter_specs
+        self.queryset = self.get_queryset(request)
 
         if self.is_popup:
             title = gettext("Select %s")
@@ -229,11 +247,6 @@ class AtlasSearchChangeList(ChangeList):
                 field_name = param
                 order = "asc"
 
-            # Temporarily left out: Could not find a field named `id` in the schema for sorting
-            if field_name in ["pk", "id"]:
-                # sort_dict['id'] = order
-                continue
-
             if not fields.get(field_name):
                 continue
 
@@ -279,10 +292,10 @@ class AtlasSearchChangeList(ChangeList):
 
             lookup = lookup or "exact"
             if lookup == "isnull":
-                # Null search is not supported in typesense
+                # Null search is not supported in Atlas Search
                 continue
 
-            if isinstance(field, tuple(TYPESENSE_DATETIME_FIELDS)):
+            if isinstance(field, tuple(ATLAS_SEARCH_DATETIME_FIELDS)):
                 datetime_object = parse_datetime(value)
                 value = get_unix_timestamp(datetime_object)
 
@@ -388,9 +401,9 @@ class AtlasSearchChangeList(ChangeList):
         ordering = self.get_atlas_ordering(request)
         sort_by = self.get_sort_by(ordering)
 
-        # Apply django_typesense search results
+        # Apply Atlas Search results
         query = self.query or "*"
-        results = self.model_admin.get_typesense_search_results(
+        results = self.model_admin.get_atlas_search_results(
             request,
             query,
             self.page_num,
@@ -408,10 +421,8 @@ class AtlasSearchChangeList(ChangeList):
         return results
 
     def get_queryset(self, request):
-        # this is needed for admin actions that call cl.get_queryset
-        # exporting is the currently possible way of getting records from typesense without pagination
-        # Typesense team will work on a flag to disable pagination, until then, we need a way to get this to work.
-        # Problem happens when django finds fields only present on typesense in its filter i.e IncorrectLookupParameters
+        # This is needed for admin actions that call cl.get_queryset
+        # Problem happens when django finds fields only present in Atlas Search in its filter i.e IncorrectLookupParameters
         # First, we collect all the declared list filters.
         (
             self.filter_specs,
@@ -445,7 +456,7 @@ class AtlasSearchChangeList(ChangeList):
                 # are not in the correct type, so we might get FieldError,
                 # ValueError, ValidationError, or ?.
 
-                # for django-typesense, possibly means k only available in typesense
+                # for django-atlas-search, possibly means k only available in Atlas Search
                 new_lookup_params = self.model.search_index_class.get_django_lookup(param, value, e)
                 qs = qs.filter(**new_lookup_params)
 

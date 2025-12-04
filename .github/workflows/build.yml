@@ -9,59 +9,83 @@ on:  # yamllint disable-line rule:truthy
 jobs:
   build:
     name: Python ${{ matrix.python-version }} | Django ${{ matrix.django-version}} | Ubuntu
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          - python-version: 3.8
-            django-version: "3.2.*"
-          - python-version: 3.8
-            django-version: "4.0.*"
-
-          - python-version: 3.9
-            django-version: "3.2.*"
-          - python-version: 3.9
-            django-version: "4.0.*"
-          - python-version: 3.9
-            django-version: "4.1.*"
-
           - python-version: "3.10"
-            django-version: "3.2.*"
-          - python-version: "3.10"
-            django-version: "4.0.*"
-          - python-version: "3.10"
-            django-version: "4.1.*"
+            django-version: "4.2.*"
             coverage: true
+
+          - python-version: "3.11"
+            django-version: "4.2.*"
+          - python-version: "3.11"
+            django-version: "5.0.*"
+
+    env:
+      MONGODB_ATLAS_PUBLIC_API_KEY: ${{ secrets.MONGODB_ATLAS_PUBLIC_API_KEY }}
+      MONGODB_ATLAS_PRIVATE_API_KEY: ${{ secrets.MONGODB_ATLAS_PRIVATE_API_KEY }}
+      MONGODB_ATLAS_ORG_ID: ${{ secrets.MONGODB_ATLAS_ORG_ID }}
+      MONGODB_ATLAS_PROJECT_ID: ${{ secrets.MONGODB_ATLAS_PROJECT_ID }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+
+      - name: Setup Atlas CLI
+        uses: mongodb/atlas-github-action@v0.2.2
+
+      - name: Get Atlas Connection String
+        id: get-connection-string
+        shell: bash
+        run: |
+          if [ -n "$MONGODB_ATLAS_CLUSTER_NAME" ]; then
+            # Get connection string from existing cluster using Atlas CLI
+            CONNECTION_STRING=$(atlas clusters connectionString describe "$MONGODB_ATLAS_CLUSTER_NAME" --projectId "$MONGODB_ATLAS_PROJECT_ID" --output json | python3 -c "import sys, json; print(json.load(sys.stdin)['connectionString']['standardSrv'])")
+          else
+            # Use connection string from secret if cluster name not provided
+            CONNECTION_STRING="${{ secrets.ATLAS_CONNECTION_STRING }}"
+          fi
+          echo "connection-string=$CONNECTION_STRING" >> $GITHUB_OUTPUT
+        env:
+          MONGODB_ATLAS_CLUSTER_NAME: ${{ secrets.MONGODB_ATLAS_CLUSTER_NAME }}
 
       - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install Django ${{ matrix.django-version }}
-        run: |
-          pip install Django==${{ matrix.django-version }}
-          pip install coverage
-          pip install factory-boy
-          pip install pytz
-          pip install pymongo
-
-      - name: Setup Atlas Search
-        uses: jirevwe/typesense-github-action@v1.0.1
+      - name: Cache pip packages
+        uses: actions/cache@v3
         with:
-          typesense-version: '27.0'
-          typesense-api-key: sample_key
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+          pip install "Django==${{ matrix.django-version }}"
 
       - name: Run tests
+        env:
+          ATLAS_CONNECTION_STRING: ${{ steps.get-connection-string.outputs.connection-string }}
         run: |
-          coverage run runtests.py
+          if [ "${{ matrix.coverage }}" == "true" ]; then
+            coverage run runtests.py
+          else
+            python runtests.py
+          fi
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        if: matrix.coverage == 'true'
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella

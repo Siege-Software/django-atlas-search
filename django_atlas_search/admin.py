@@ -6,8 +6,10 @@ from django.db.models import QuerySet
 from django.forms import forms
 from django.http import JsonResponse
 
+from django_atlas_search.changelist import AtlasSearchChangeList
 from django_atlas_search.mixins import AtlasSearchModelMixin
 from django_atlas_search.paginator import AtlasSearchPaginator
+from django_atlas_search.utils import atlas_search
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +17,7 @@ logger = logging.getLogger(__name__)
 class AtlasSearchAdminMixin(admin.ModelAdmin):
     atlas_search_fields = []
 
-    def get_typesense_search_fields(self, request):
+    def get_atlas_search_fields(self, request):
         """
         Return a sequence containing the fields to be searched whenever
         somebody submits a search query.
@@ -68,17 +70,25 @@ class AtlasSearchAdminMixin(admin.ModelAdmin):
             request: the HttpRequest
 
         Returns:
-            A list of the typesense results
+            A dictionary with 'hits' and 'found' keys
         """
-
-        search_index = self.model.search_index_class()
-        return search_index.collection.find()
+        search_index_class = self.model.search_index_class
+        # Get all documents (match all query)
+        results = atlas_search(
+            database_name=search_index_class.database_name,
+            collection_name=search_index_class.collection_name,
+            index_name=search_index_class.index_name,
+            q="*",
+            query_by="",
+            page=1,
+            per_page=1  # We only need the count
+        )
+        return results
 
     def get_changelist(self, request, **kwargs):
         """
         Return the ChangeList class for use on the changelist page.
         """
-        from django_atlas_search.changelist import AtlasSearchChangeList
         return AtlasSearchChangeList
 
     def get_paginator(
@@ -104,7 +114,7 @@ class AtlasSearchAdminMixin(admin.ModelAdmin):
             list_per_page: int = None
     ):
         """
-        Get the results from typesense with the provided filtering, sorting, pagination and search parameters applied
+        Get the results from Atlas Search with the provided filtering, sorting, pagination and search parameters applied
 
         Args:
             search_term: The search term provided in the search form
@@ -115,15 +125,18 @@ class AtlasSearchAdminMixin(admin.ModelAdmin):
             list_per_page: The number of results to return per page
 
         Returns:
-            A list of typesense results
+            A dictionary with 'hits' and 'found' keys
         """
         if list_per_page is None:
             list_per_page = self.list_per_page
 
-        results = typesense_search(
-            collection_name=self.model.search_index_class.schema_name,
+        search_index_class = self.model.search_index_class
+        results = atlas_search(
+            database_name=search_index_class.database_name,
+            collection_name=search_index_class.collection_name,
+            index_name=search_index_class.index_name,
             q=search_term or "*",
-            query_by=self.model.search_index_class.query_by_fields,
+            query_by=search_index_class.query_by_fields or "",
             page=page_num,
             per_page=list_per_page,
             filter_by=filter_by,

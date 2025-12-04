@@ -1,7 +1,7 @@
 from django.db import models
 from django.utils import dateformat
 
-from django_atlas_search.mixins import TypesenseManager, TypesenseModelMixin
+from django_atlas_search.mixins import AtlasSearchManager, AtlasSearchModelMixin
 from tests.collections import SongCollection
 
 
@@ -19,12 +19,12 @@ class Artist(models.Model):
         return self.name
 
 
-class SongManager(TypesenseManager):
+class SongManager(AtlasSearchManager):
     def do_something(self):
         return None
 
 
-class Song(TypesenseModelMixin):
+class Song(AtlasSearchModelMixin):
     title = models.CharField(max_length=100)
     genre = models.ForeignKey(Genre, on_delete=models.CASCADE)
     release_date = models.DateField(blank=True, null=True)
@@ -33,7 +33,7 @@ class Song(TypesenseModelMixin):
     number_of_views = models.IntegerField(default=0)
     duration = models.DurationField()
     description = models.TextField()
-    collection_class = SongCollection
+    search_index_class = SongCollection
 
     objects = SongManager()
 

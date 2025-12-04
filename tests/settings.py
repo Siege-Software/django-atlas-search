@@ -11,7 +11,7 @@ INSTALLED_APPS = (
     "django.contrib.sessions",
     "django.contrib.sites",
     "django.contrib.messages",
-    "django_typesense",
+    "django_atlas_search",
     "tests",
 )
 
@@ -43,10 +43,11 @@ TEMPLATES = [
     },
 ]
 
-TYPESENSE = {
-    "api_key": "sample_key",
-    "nodes": [{"host": "localhost", "protocol": "http", "port": "8108"}],
-}
+# MongoDB Atlas Search configuration
+ATLAS_CONNECTION_SECRET_STRING = os.environ.get(
+    "ATLAS_CONNECTION_SECRET_STRING",
+    "mongodb://localhost:27017/test_db"
+)
 
 USE_TZ = True
 

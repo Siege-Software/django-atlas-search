@@ -17,8 +17,17 @@ class AtlasSearchPaginator(Paginator):
         """
         Do whatever is required to present the values correctly in the admin.
         """
-        documents = (hit['document'] for hit in self.object_list["hits"])
-        search_index = self.model.get_search_index(data=documents)
+        # Handle both old format (list of dicts) and new format (dict with 'hits')
+        if isinstance(self.object_list, dict) and "hits" in self.object_list:
+            documents = [hit.get('document', hit) for hit in self.object_list["hits"]]
+        else:
+            # Fallback for direct list of documents
+            documents = self.object_list if isinstance(self.object_list, list) else []
+        
+        if not documents:
+            return []
+        
+        search_index = self.model.get_search_index(data=documents, many=True)
         model_field_names = set((local_field.name for local_field in self.model._meta.local_fields))
         results = []
 
@@ -59,4 +68,9 @@ class AtlasSearchPaginator(Paginator):
     @cached_property
     def count(self):
         """Return the total number of objects, across all pages."""
-        return self.object_list["found"]
+        if isinstance(self.object_list, dict) and "found" in self.object_list:
+            return self.object_list["found"]
+        elif isinstance(self.object_list, list):
+            return len(self.object_list)
+        else:
+            return 0

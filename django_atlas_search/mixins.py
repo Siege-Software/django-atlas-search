@@ -4,7 +4,7 @@ from django.db import models
 class AtlasSearchQuerySet(models.QuerySet):
     def delete(self):
         assert issubclass(self.model, AtlasSearchModelMixin), (
-            f"Model `{self.model}` must inherit `AtlasSearchMixin` to use the AtlasSearchQueryset Manager"
+            f"Model `{self.model}` must inherit `AtlasSearchModelMixin` to use the AtlasSearchQuerySet Manager"
         )
         search_index = self.model.get_search_index(self, many=True)
         search_index.delete()
@@ -12,7 +12,7 @@ class AtlasSearchQuerySet(models.QuerySet):
 
     def update(self, **kwargs):
         assert issubclass(self.model, AtlasSearchModelMixin), (
-            f"Model `{self.model}` must inherit `AtlasSearchMixin` to use the AtlasSearchQueryset Manager"
+            f"Model `{self.model}` must inherit `AtlasSearchModelMixin` to use the AtlasSearchQuerySet Manager"
         )
         obj_ids = list(self.values_list('id', flat=True))
         update_result = super().update(**kwargs)
@@ -52,7 +52,21 @@ class AtlasSearchModelMixin(models.Model):
     def get_search_index(cls, *args, **kwargs):
         """
         Return the search index obj.
+        
+        Handles cases where an instance is passed as a positional argument.
+        If database_name is not explicitly provided in kwargs and the first arg
+        is not a string (and not None), treat it as 'obj' instead of 'database_name'.
         """
         search_index_class = cls.get_search_index_class()
+        
+        # If database_name is not in kwargs and first arg is not a string (and not None),
+        # treat it as 'obj'. This handles calls like get_search_index(instance) where
+        # instance would otherwise be misinterpreted as database_name.
+        if args and 'database_name' not in kwargs and not isinstance(args[0], str) and args[0] is not None:
+            # First arg is likely an object instance, not database_name
+            # Move it to kwargs as 'obj' and pass remaining args
+            kwargs['obj'] = args[0]
+            args = args[1:]
+        
         return search_index_class(*args, **kwargs)
 

@@ -1,10 +1,10 @@
-# django typesense
+# django-atlas-search
 
-[![Build](https://github.com/Siege-Software/django-atlas-search/workflows/build/badge.svg?branch=main)](https://github.com/Siege-Software/django-atlas-search/actions?workflow=CI)
+[![Build](https://github.com/Siege-Software/django-atlas-search/workflows/build/badge.svg?branch=main)](https://github.com/Siege-Software/django-atlas-search/actions)
 [![codecov](https://codecov.io/gh/Siege-Software/django-atlas-search/branch/main/graph/badge.svg?token=S4W0E84821)](https://codecov.io/gh/Siege-Software/django-atlas-search)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 ![PyPI download month](https://img.shields.io/pypi/dm/django-atlas-search.svg)
-[![PyPI version](https://badge.fury.io/py/django-typesense.svg)](https://pypi.python.org/pypi/django-atlas-search/)
+[![PyPI version](https://badge.fury.io/py/django-atlas-search.svg)](https://pypi.python.org/pypi/django-atlas-search/)
 ![Python versions](https://img.shields.io/badge/python-%3E%3D3.8-brightgreen)
 ![Django Versions](https://img.shields.io/badge/django-%3E%3D3.2-brightgreen)
 [![PyPI License](https://img.shields.io/pypi/l/django-atlas-search.svg)](https://pypi.org/project/django-atlas-search/)
@@ -41,11 +41,11 @@ INSTALLED_APPS = [
 ]
 ```
 
-- Add `ATLAS_CONNECTION_STRING` connection details. Read more about [Connection Strings](https://www.mongodb.com/docs/manual/reference/connection-string/)
+- Add `ATLAS_CONNECTION_SECRET_STRING` connection details. Read more about [Connection Strings](https://www.mongodb.com/docs/manual/reference/connection-string/)
 
 ```py
 ...
-ATLAS_CONNECTION_STRING="mongodb://127.0.0.1:32768/?directConnection=true"
+ATLAS_CONNECTION_SECRET_STRING="mongodb://127.0.0.1:32768/?directConnection=true"
 ```
 
 Follow this [guide](https://www.mongodb.com/docs/atlas/getting-started/) to setup atlas search
@@ -84,11 +84,6 @@ class Song(models.Model):
     def __str__(self):
         return self.title
      
-    @property
-    def release_date_timestamp(self):
-        # read https://typesense.org/docs/0.25.0/api/collections.html#indexing-dates
-        return self.release_date.timestamp() if self.release_date else self.release_date
-      
     def artist_names(self):
         return list(self.artists.all().values_list('name', flat=True))
         
@@ -97,40 +92,45 @@ class Song(models.Model):
 For such an application, you might be interested in improving the search and load times on the song records list view.
 
 ```
-from django_typesense.collections import TypesenseCollection
-from django_typesense import fields
+from django_atlas_search.collections import AtlasSearchIndex
+from django_atlas_search import fields
 
 
-class SongCollection(TypesenseCollection):
+class SongCollection(AtlasSearchIndex):
+    # Required: database and collection configuration
+    database_name = "my_database"
+    collection_name = "songs"
+    index_name = "song_search_index"
+    
     # At least one of the indexed fields has to be provided as one of the `query_by_fields`. Must be a CharField
     query_by_fields = 'title,artist_names,genre_name'
     
-    title = fields.TypesenseCharField()
-    genre_name = fields.TypesenseCharField(value='genre.name')
-    genre_id = fields.TypesenseSmallIntegerField()
-    release_date = fields.TypesenseDateField(value='release_date_timestamp', optional=True)
-    artist_names = fields.TypesenseArrayField(base_field=fields.TypesenseCharField(), value='artist_names')
-    number_of_comments = fields.SmallIntegerField(index=False, optional=True)
-    number_of_views = fields.SmallIntegerField(index=False, optional=True)
-    duration = fields.DurationField()
+    title = fields.AtlasSearchCharField()
+    genre_name = fields.AtlasSearchCharField(value='genre.name')
+    genre_id = fields.AtlasSearchIntegerField()
+    release_date = fields.AtlasSearchDateField(optional=True)
+    artist_names = fields.AtlasSearchArrayField(base_field=fields.AtlasSearchCharField(), value='artist_names')
+    number_of_comments = fields.AtlasSearchIntegerField(searchable=False, optional=True)
+    number_of_views = fields.AtlasSearchIntegerField(searchable=False, optional=True)
+    duration = fields.AtlasSearchIntegerField()  # Duration stored as seconds
 ```
 
-It's okay to store fields that you don't intend to search but to display on the admin. Such fields should be marked as un-indexed e.g:
+It's okay to store fields that you don't intend to search but to display on the admin. Such fields should be marked as non-searchable e.g:
 
-    number_of_views = fields.SmallIntegerField(index=False, optional=True)
+    number_of_views = fields.AtlasSearchIntegerField(searchable=False, optional=True)
 
 Update the song model as follows:
 ```
-from django_typesense.mixins import TypesenseModelMixin
+from django_atlas_search.mixins import AtlasSearchModelMixin
 
-class Song(TypesenseModelMixin):
+class Song(AtlasSearchModelMixin):
     ...
-    collection_class = SongCollection
+    search_index_class = SongCollection
     ...
 ```
 
-The `TypesenseModelMixin` provides a Manager that overrides the `update` and `delete` methods of the Queryset.
-If your model has a custom manager, make sure the custom manager inherits `django_typesense.mixin.TypesenseManager`
+The `AtlasSearchModelMixin` provides a Manager that overrides the `update` and `delete` methods of the QuerySet.
+If your model has a custom manager, make sure the custom manager inherits `django_atlas_search.mixins.AtlasSearchManager`
 
 How the value of a field is retrieved from a model instance:
 1. The collection field name is called as a property of the model instance
@@ -141,8 +141,7 @@ in the django app where the model you are creating a collection for is.
 
 > [!NOTE]  
 > We recommend displaying data from ForeignKey or OneToOne fields as string attributes using the display decorator to
-> avoid triggering database queries that will negatively affect performance 
-> [Issue #16](https://github.com/Siege-Software/django-typesense/issues/16).
+> avoid triggering database queries that will negatively affect performance.
 
 Instead of this in the admin:
 ```
@@ -162,10 +161,10 @@ def genre_name(self, obj):
 
 ### Search Collections
 
-Using Typesense for search
+Using Atlas Search for search
 
 ```py
-from django_atlas_search.utils import typesense_search
+from django_atlas_search.utils import atlas_search
 
 from .models import Song
 
@@ -175,37 +174,42 @@ def search_songs(request):
     songs = Song.objects.all()
 
     if search_term:
-        data = {
-            "q": search_term,
-            "query_by": Song.search_index_class.query_by_fields,
-            # Include other search parameters here
-            # https://typesense.org/docs/27.1/api/search.html#search-parameters
-        }
-        res = typesense_search(Song.search_index_class.schema_name, **data)
-        ids = [result["document"]["id"] for result in res["hits"]]
+        search_index_class = Song.search_index_class
+        results = atlas_search(
+            database_name=search_index_class.database_name,
+            collection_name=search_index_class.collection_name,
+            index_name=search_index_class.index_name,
+            q=search_term,
+            query_by=search_index_class.query_by_fields,
+            page=1,
+            per_page=20
+        )
+        ids = [result["document"]["id"] for result in results["hits"]]
         songs = songs.filter(id__in=ids)
 
     ...
 ```
 
 ### Update Collection Schema
-To add or remove fields to a collection's schema in place, update your collection then run:
+To add or remove fields to a collection's schema, update your collection then run:
     `python manage.py updatecollections`. Consider adding this to your CI/CD pipeline.
 
 This also updates the [synonyms](#synonyms)
 
+> [!NOTE]
+> Atlas Search doesn't support in-place index updates. The `updatecollections` command will drop and recreate the index when changes are detected.
 
-### How updates are made to Typesense
+### How updates are made to Atlas Search
 1. Signals -
-`django-typesense` listens to signal events (`post_save`, `pre_delete`, `m2m_changed`) to update typesense records. 
+`django-atlas-search` listens to signal events (`post_save`, `pre_delete`, `m2m_changed`) to update Atlas Search records. 
 If [`update_fields`](https://docs.djangoproject.com/en/4.2/ref/models/instances/#specifying-which-fields-to-save)
-were provided in the save method, only these fields will be updated in typesense.
+were provided in the save method, only these fields will be updated in Atlas Search.
 
 2. Update query -
-`django-typesense` overrides Django's `QuerySet.update` to make updates to typesense on the specified fields
+`django-atlas-search` overrides Django's `QuerySet.update` to make updates to Atlas Search on the specified fields
 
 3. Manual -
-You can also update typesense records manually e.g after doing a `bulk_create`
+You can also update Atlas Search records manually e.g after doing a `bulk_create`
 ```
 objs = Song.objects.bulk_create(
     [
@@ -213,25 +217,26 @@ objs = Song.objects.bulk_create(
       Song(title="Midnight City"),
    ]
 )
-collection = SongCollection(objs, many=True)
-collection.update()
+search_index = Song.search_index_class(objs, many=True)
+search_index.update()
 ```
 
 ### Admin Integration
-To make a model admin display and search from the model's Typesense collection, the admin class should
-inherit `TypesenseSearchAdminMixin`. This also adds Live Search to your admin changelist view.
+To make a model admin display and search from the model's Atlas Search index, the admin class should
+inherit `AtlasSearchAdminMixin`. This also adds Live Search to your admin changelist view.
 
 ```
-from django_typesense.admin import TypesenseSearchAdminMixin
+from django_atlas_search.admin import AtlasSearchAdminMixin
 
 @admin.register(Song)
-class SongAdmin(TypesenseSearchAdminMixin):
+class SongAdmin(AtlasSearchAdminMixin):
     ...
     list_display = ['title', 'genre_name', 'release_date', 'number_of_views', 'duration']
     
     @admin.display(description='Genre')
     def genre_name(self, obj):
-        return obj.genre.name
+        # genre_name is stored in the Atlas Search index
+        return obj.genre_name
     ...
 
 ```
@@ -240,15 +245,18 @@ class SongAdmin(TypesenseSearchAdminMixin):
 For the initial setup, you will need to index in bulk. Bulk updating is multi-threaded. Depending on your system specs, you should set the `batch_size` keyword argument.
 
 ```
-from django_typesense.utils import bulk_delete_typsense_records, bulk_update_typsense_records
+from django_atlas_search.utils import bulk_delete_atlas_records, bulk_update_atlas_records
 
 model_qs = Song.objects.all().order_by('id')  # querysets should be ordered
-bulk_update_typesense_records(model_qs, batch_size=1024)
+bulk_update_atlas_records(model_qs, batch_size=1024)
 ```
+
+> [!NOTE]
+> Before bulk indexing, make sure you've created the Atlas Search index by running `python manage.py updatecollections`.
 
 ### Custom Admin Filters
 To make use of custom admin filters, define a `filter_by` property in the filter definition.
-Define boolean typesense field `has_views` that gets it's value from a model property. This is example is not necessarily practical but for demo purposes.
+Define boolean Atlas Search field `has_views` that gets its value from a model property. This example is not necessarily practical but for demo purposes.
 
 ```
 # models.py
@@ -260,9 +268,9 @@ class Song(models.Model):
     ...
 
 # collections.py
-class SongCollection(TypesenseCollection):
+class SongCollection(AtlasSearchIndex):
     ...
-    has_views = fields.TypesenseBooleanField()
+    has_views = fields.AtlasSearchBooleanField()
     ...
 ```
 
@@ -289,11 +297,11 @@ class HasViewsFilter(admin.SimpleListFilter):
 
     @property
     def filter_by(self):
-        # This is used by typesense
+        # This is used by Atlas Search
         if self.value() == 'True':
             return {"has_views": "=true"}
         elif self.value() == 'False':
-            return {"has_views": "!=false"}
+            return {"has_views": "=false"}
 
         return {}
 ```
@@ -302,25 +310,57 @@ Note that simple lookups like the one above are done by default (hence no need t
 the `parameter_name` is a field in the collection
 
 ### Synonyms
-The [synonyms](https://typesense.org/docs/0.25.1/api/synonyms.html) feature allows you to define search terms that 
+The [synonyms](https://www.mongodb.com/docs/atlas/atlas-search/synonyms/) feature allows you to define search terms that 
 should be considered equivalent. Synonyms should be defined with classes that inherit from `Synonym`
 
 ```
-from django_typesense.collections import Synonym
+from django_atlas_search.collections import Synonym
 
 # say you need users searching the genre hip-hop to get results if they use the search term rap
 
 class HipHopSynonym(Synonym):
     name = 'hip-hop-synonyms'
     synonyms = ['hip-hop', 'rap']
+    collection = 'synonymous_terms'  # MongoDB collection for synonym data
  
 # Update the collection to include the synonym
-class SongCollection(TypesenseCollection):
+class SongCollection(AtlasSearchIndex):
     ...
     synonyms = [HipHopSynonym]
     ...
     
 ```
 To update the collection with any changes made to synonyms run `python manage.py updatecollections`
+
+## Field Types
+
+django-atlas-search supports the following field types:
+
+- `AtlasSearchCharField` - String field for text search
+- `AtlasSearchTextField` - Text field optimized for full-text search
+- `AtlasSearchKeywordField` - Keyword field for exact matching
+- `AtlasSearchIntegerField` - Integer field (32-bit)
+- `AtlasSearchLongField` - Long integer field (64-bit)
+- `AtlasSearchFloatField` - Floating point number field
+- `AtlasSearchDecimalField` - Decimal field (stored as string for precision)
+- `AtlasSearchBooleanField` - Boolean field
+- `AtlasSearchDateField` - Date field
+- `AtlasSearchDateTimeField` - DateTime field
+- `AtlasSearchTimeField` - Time field
+- `AtlasSearchArrayField` - Array field containing elements of a specific type
+- `AtlasSearchJSONField` - JSON field (stored as string)
+- `AtlasSearchGeoPointField` - Geospatial point field for location-based search
+- `AtlasSearchFacetField` - Field specifically for faceted search
+
+## Requirements
+
+- Python >= 3.8
+- Django >= 3.2
+- PyMongo >= 4.0
+- MongoDB with Atlas Search enabled
+
+## License
+
+MIT License - see LICENSE file for details
 
 
