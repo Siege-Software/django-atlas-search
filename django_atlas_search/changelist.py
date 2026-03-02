@@ -10,7 +10,6 @@ from django.contrib.admin.options import (
 )
 from django.contrib.admin.views.main import ChangeList
 from django.core.exceptions import ImproperlyConfigured, SuspiciousOperation
-from django.core.paginator import InvalidPage
 from django.db.models import OrderBy, OuterRef, Exists
 from django.utils.translation import gettext
 from django.utils.dateparse import parse_datetime
@@ -152,36 +151,29 @@ class AtlasSearchChangeList(ChangeList):
         self.pk_attname = self.lookup_opts.pk.attname
 
     def get_results(self, request):
+        # Atlas Search already returned the correct page of hits — we do not
+        # re-paginate in memory.  The paginator is only used to expose the total
+        # count and to satisfy Django's admin template expectations.
         paginator = self.model_admin.get_paginator(
             request, self.results, self.list_per_page
         )
-        # Get the number of objects, with admin filters applied.
+        # Total number of matching documents (Atlas "found" count).
         result_count = paginator.count
 
-        # Get the total number of objects, with no admin filters applied.
+        # Total without any filters (used by "show full result count").
         if self.model_admin.show_full_result_count:
             full_result_count = self.root_results["found"]
         else:
             full_result_count = None
+
         can_show_all = result_count <= self.list_max_show_all
         multi_page = result_count > self.list_per_page
 
-        # Get the list of objects to display on this page.
-        if (self.show_all and can_show_all) or not multi_page:
-            paginator = self.model_admin.get_paginator(
-                request, self.results, self.list_max_show_all
-            )
-            result_list = paginator.results
-        else:
-            try:
-                result_list = paginator.page(self.page_num).object_list
-            except InvalidPage:
-                raise IncorrectLookupParameters
+        # The hits fetched from Atlas are already the right page — use them directly.
+        result_list = paginator.results
 
         self.result_count = result_count
         self.show_full_result_count = self.model_admin.show_full_result_count
-        # Admin actions are shown if there is at least one entry
-        # or if entries are not counted because show_full_result_count is disabled
         self.show_admin_actions = not self.show_full_result_count or bool(
             full_result_count
         )
@@ -401,15 +393,24 @@ class AtlasSearchChangeList(ChangeList):
         ordering = self.get_atlas_ordering(request)
         sort_by = self.get_sort_by(ordering)
 
-        # Apply Atlas Search results
+        # Apply Atlas Search results.
+        # Fetch only the current page from Atlas Search — server-side pagination.
+        # When "show all" is requested we fetch up to list_max_show_all items on
+        # page 1; otherwise we fetch list_per_page items at the requested page.
         query = self.query or "*"
+        if self.show_all:
+            fetch_page = 1
+            fetch_per_page = self.list_max_show_all
+        else:
+            fetch_page = self.page_num
+            fetch_per_page = self.list_per_page
         results = self.model_admin.get_atlas_search_results(
             request,
             query,
-            self.page_num,
+            fetch_page,
             filter_by=filter_by,
             sort_by=sort_by,
-            list_per_page=self.list_max_show_all  # so that if we have all the data if we need to show all
+            list_per_page=fetch_per_page,
         )
 
         # Set query string for clearing all filters.
@@ -485,3 +486,16 @@ class AtlasSearchChangeList(ChangeList):
             qs = self.apply_select_related(qs)
 
         return qs
+
+    def get_filters_params(self, params=None):
+        """
+        Extend the parent implementation to also strip PAGE_VAR ('p') from the
+        filter params. Django's ChangeList.get_filters_params() removes params
+        listed in its own IGNORED_PARAMS constant, but PAGE_VAR is not included
+        there. Without this override, 'p=<n>' from pagination links leaks into
+        remaining_lookup_params and is passed to qs.filter(p=...), causing a
+        FieldError.
+        """
+        lookup_params = super().get_filters_params(params)
+        lookup_params.pop(PAGE_VAR, None)
+        return lookup_params

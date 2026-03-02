@@ -145,14 +145,15 @@ class AtlasSearchAdminMixin(admin.ModelAdmin):
         return results
 
     def get_search_results(self, request, queryset, search_term):
-        if not request.POST.get("action"):
-            may_have_duplicates = False
+        may_have_duplicates = False
+
+        if search_term:
+            # Always filter by Atlas Search results when a search term is present.
+            # This applies to both normal display and action submissions, ensuring
+            # admin actions receive a queryset scoped to the current search results
+            # rather than the full table.
             results = self.get_atlas_search_results(request, search_term)
             ids = [result["document"]["id"] for result in results["hits"]]
             queryset = queryset.filter(id__in=ids)
-        else:
-            queryset, may_have_duplicates = super().get_search_results(
-                request, queryset, search_term
-            )
 
         return queryset, may_have_duplicates
